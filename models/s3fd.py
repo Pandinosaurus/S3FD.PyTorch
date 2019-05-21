@@ -189,7 +189,6 @@ class S3FD_MV2(nn.Module):
         self.phase = phase
         self.num_classes = num_classes
         self.size = size
-        self.detection_dimension = list()
         self.base_net = MobileNetV2(width_mult=1.0).features
         self.source_layer_indexes = [
             GraphPath(7, 'conv', 3),
@@ -264,6 +263,8 @@ class S3FD_MV2(nn.Module):
         locations = []
         start_layer_index = 0
         header_index = 0
+        detection_dimension = list()
+
         for end_layer_index in self.source_layer_indexes:
             if isinstance(end_layer_index, GraphPath):
                 path = end_layer_index
@@ -291,42 +292,41 @@ class S3FD_MV2(nn.Module):
                     x = layer(x)
                 end_layer_index += 1
             start_layer_index = end_layer_index
-            confidence, location = self.compute_header(header_index, y)
+            confidence, location, dims = self.compute_header(header_index, y)
             header_index += 1
             confidences.append(confidence)
             locations.append(location)
+            detection_dimension.append(dims)
+
 
         for layer in self.base_net[end_layer_index:]:
             x = layer(x)
 
         for layer in self.extras:
             x = layer(x)
-            confidence, location = self.compute_header(header_index, x)
+            confidence, location, dims = self.compute_header(header_index, x)
             header_index += 1
             confidences.append(confidence)
             locations.append(location)
+            detection_dimension.append(dims)
 
         confidences = torch.cat(confidences, 1)
         locations = torch.cat(locations, 1)
 
-        self.detection_dimension = torch.Tensor(self.detection_dimension)
+        detection_dimension = torch.Tensor(detection_dimension)
 
         if self.phase == "test":
             output = (locations,
                       self.softmax(confidences),
-                      self.detection_dimension)
+                      detection_dimension)
         else:
             output = (locations,
                       confidences,
-                      self.detection_dimension)
+                      detection_dimension)
 
         return output
 
     def compute_header(self, i, x):
-
-        # add detection feature map
-        # print(x.shape[2:])
-        self.detection_dimension.append(x.shape[2:])
         # add extra normalization
         if i == 0:
             x =  self.conv3_3_L2Norm(x)
@@ -351,7 +351,7 @@ class S3FD_MV2(nn.Module):
         location = location.permute(0, 2, 3, 1).contiguous()
         location = location.view(location.size(0), -1, 4)
 
-        return confidence, location
+        return confidence, location, x.shape[2:]
 
 if __name__ == '__main__':
     net = S3FD_MV2('train', 640, 2)
