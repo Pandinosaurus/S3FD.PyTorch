@@ -9,7 +9,7 @@ import argparse
 from torch.autograd import Variable
 import torch.utils.data as data
 from data import AnnotationTransform, VOCDetection, detection_collate, preproc_s3fd
-from data.config_s3fd import cfg
+from data.config_s3fd_mv2 import cfg
 from layers.modules.multibox_loss_s3fd import MultiBoxLoss
 from layers.functions.prior_box_s3fd import PriorBox
 import time

@@ -192,20 +192,21 @@ class S3FD_MV2(nn.Module):
         self.detection_dimension = list()
         self.base_net = MobileNetV2(width_mult=1.0).features
         self.source_layer_indexes = [
+            GraphPath(7, 'conv', 3),
             GraphPath(14, 'conv', 3),
             19,
         ]
+        print(self.base_net)
 
         self.extras = nn.ModuleList([
             InvertedResidual(1280, 512, stride=2, expand_ratio=0.2),
             InvertedResidual(512, 256, stride=2, expand_ratio=0.25),
-            InvertedResidual(256, 256, stride=2, expand_ratio=0.5),
-            InvertedResidual(256, 64, stride=2, expand_ratio=0.25)
+            InvertedResidual(256, 256, stride=2, expand_ratio=0.5)
         ])
 
-        self.conv3_3_L2Norm = L2Norm(576, 10)
-        self.conv4_3_L2Norm = L2Norm(1280, 8)
-        self.conv5_3_L2Norm = L2Norm(512, 5)
+        self.conv3_3_L2Norm = L2Norm(192, 10)
+        self.conv4_3_L2Norm = L2Norm(576, 8)
+        self.conv5_3_L2Norm = L2Norm(1280, 5)
 
         self.loc, self.conf = self.multibox(self.num_classes)
 
@@ -228,24 +229,24 @@ class S3FD_MV2(nn.Module):
         loc_layers = []
         conf_layers = []
         # Max-out BG label
-        loc_layers += [nn.Conv2d(576, 1 * 4, kernel_size=3, padding=1)]
-        conf_layers += [nn.Conv2d(576, 1 * 4, kernel_size=3, padding=1)]
+        loc_layers += [nn.Conv2d(192, 1 * 4, kernel_size=3, padding=1)]
+        conf_layers += [nn.Conv2d(192, 1 * 4, kernel_size=3, padding=1)]
         # conf_layers += [nn.Conv2d(256, 1 * num_classes, kernel_size=3, padding=1)]
         # conv4_3
+        loc_layers += [nn.Conv2d(576, 1 * 4, kernel_size=3, padding=1)]
+        conf_layers += [nn.Conv2d(576, 1 * num_classes, kernel_size=3, padding=1)]
+        # conv5_3
         loc_layers += [nn.Conv2d(1280, 1 * 4, kernel_size=3, padding=1)]
         conf_layers += [nn.Conv2d(1280, 1 * num_classes, kernel_size=3, padding=1)]
-        # conv5_3
+        # fc6
         loc_layers += [nn.Conv2d(512, 1 * 4, kernel_size=3, padding=1)]
         conf_layers += [nn.Conv2d(512, 1 * num_classes, kernel_size=3, padding=1)]
-        # fc6
-        loc_layers += [nn.Conv2d(256, 1 * 4, kernel_size=3, padding=1)]
-        conf_layers += [nn.Conv2d(256, 1 * num_classes, kernel_size=3, padding=1)]
         # fc7
         loc_layers += [nn.Conv2d(256, 1 * 4, kernel_size=3, padding=1)]
         conf_layers += [nn.Conv2d(256, 1 * num_classes, kernel_size=3, padding=1)]
         # conv7_2
-        loc_layers += [nn.Conv2d(64, 1 * 4, kernel_size=3, padding=1)]
-        conf_layers += [nn.Conv2d(64, 1 * num_classes, kernel_size=3, padding=1)]
+        loc_layers += [nn.Conv2d(256, 1 * 4, kernel_size=3, padding=1)]
+        conf_layers += [nn.Conv2d(256, 1 * num_classes, kernel_size=3, padding=1)]
         return nn.Sequential(*loc_layers), nn.Sequential(*conf_layers)
 
     def load_weights(self, base_file):
