@@ -14,7 +14,7 @@ from layers.modules.multibox_loss_s3fd import MultiBoxLoss
 from layers.functions.prior_box_s3fd import PriorBox
 import time
 import math
-from models.s3fd import S3FD
+from models.s3fd import S3FD, S3FD_MV2
 from utils.logging import Logger
 from utils.logging import TensorboardSummary
 
@@ -29,6 +29,7 @@ parser.add_argument('--momentum', default=0.9, type=float, help='momentum')
 parser.add_argument('--resume_net', default=None, help='resume net for retraining')
 parser.add_argument('--resume_epoch', default=0, type=int, help='resume iter for retraining')
 parser.add_argument('-max', '--max_epoch', default=300, type=int, help='max epoch for retraining')
+parser.add_argument('--net', default='vgg16', help='backone network')
 parser.add_argument('--weight_decay', default=5e-4, type=float, help='Weight decay for SGD')
 parser.add_argument('--gamma', default=0.1, type=float, help='Gamma update for SGD')
 parser.add_argument('--save_folder', default='./weights/', help='Location to save checkpoint models')
@@ -51,8 +52,10 @@ batch_size = args.batch_size
 weight_decay = args.weight_decay
 gamma = args.gamma
 momentum = args.momentum
-
-net = S3FD('train', img_dim, num_classes)
+if args.net == 'vgg16':
+    net = S3FD('train', img_dim, num_classes)
+elif args.net == 'mv2':
+    net = S3FD_MV2('train', img_dim, num_classes)
 print("Printing net...")
 print(net)
 
@@ -77,8 +80,12 @@ if args.resume_net is not None:
     net.load_state_dict(new_state_dict)
 elif os.path.isfile(args.pretrained):
     vgg_weights = torch.load(args.pretrained)
-    print('Loading VGG network...')
-    net.vgg.load_state_dict(vgg_weights)
+    if args.net == 'vgg16':
+        print('Loading VGG network...')
+        net.vgg.load_state_dict(vgg_weights)
+    elif args.net == 'mv2':
+        print('Loading MobileNet V2 network...')
+        net.base_net.load_state_dict(vgg_weights)
 
 if args.ngpu > 1:
     net = torch.nn.DataParallel(net, device_ids=list(range(args.ngpu)))

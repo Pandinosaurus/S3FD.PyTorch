@@ -3,6 +3,10 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from layers.modules.l2norm import L2Norm
+from models.mobilenet_v2_xiaomi import MobileNetV2, InvertedResidual
+import numpy as np
+from collections import namedtuple
+GraphPath = namedtuple("GraphPath", ['s0', 'name', 's1'])  #
 
 def add_extras(cfg, i, batch_norm=False):
     # Extra layers added to VGG for feature scaling
@@ -176,3 +180,180 @@ class S3FD(nn.Module):
                         detection_dimension)
     
         return output
+
+
+class S3FD_MV2(nn.Module):
+
+    def __init__(self, phase, size, num_classes):
+        super(S3FD_MV2, self).__init__()
+        self.phase = phase
+        self.num_classes = num_classes
+        self.size = size
+        self.detection_dimension = list()
+        self.base_net = MobileNetV2(width_mult=1.0).features
+        self.source_layer_indexes = [
+            GraphPath(14, 'conv', 3),
+            19,
+        ]
+
+        self.extras = nn.ModuleList([
+            InvertedResidual(1280, 512, stride=2, expand_ratio=0.2),
+            InvertedResidual(512, 256, stride=2, expand_ratio=0.25),
+            InvertedResidual(256, 256, stride=2, expand_ratio=0.5),
+            InvertedResidual(256, 64, stride=2, expand_ratio=0.25)
+        ])
+
+        self.conv3_3_L2Norm = L2Norm(576, 10)
+        self.conv4_3_L2Norm = L2Norm(1280, 8)
+        self.conv5_3_L2Norm = L2Norm(512, 5)
+
+        self.loc, self.conf = self.multibox(self.num_classes)
+
+        if self.phase == 'test':
+            self.softmax = nn.Softmax(dim=-1)
+
+        if self.phase == 'train':
+            for m in self.modules():
+                if isinstance(m, nn.Conv2d):
+                    if m.bias is not None:
+                        nn.init.xavier_normal_(m.weight.data)
+                        m.bias.data.fill_(0.02)
+                    else:
+                        m.weight.data.normal_(0, 0.01)
+                elif isinstance(m, nn.BatchNorm2d):
+                    m.weight.data.fill_(1)
+                    m.bias.data.zero_()
+
+    def multibox(self, num_classes):
+        loc_layers = []
+        conf_layers = []
+        # Max-out BG label
+        loc_layers += [nn.Conv2d(576, 1 * 4, kernel_size=3, padding=1)]
+        conf_layers += [nn.Conv2d(576, 1 * 4, kernel_size=3, padding=1)]
+        # conf_layers += [nn.Conv2d(256, 1 * num_classes, kernel_size=3, padding=1)]
+        # conv4_3
+        loc_layers += [nn.Conv2d(1280, 1 * 4, kernel_size=3, padding=1)]
+        conf_layers += [nn.Conv2d(1280, 1 * num_classes, kernel_size=3, padding=1)]
+        # conv5_3
+        loc_layers += [nn.Conv2d(512, 1 * 4, kernel_size=3, padding=1)]
+        conf_layers += [nn.Conv2d(512, 1 * num_classes, kernel_size=3, padding=1)]
+        # fc6
+        loc_layers += [nn.Conv2d(256, 1 * 4, kernel_size=3, padding=1)]
+        conf_layers += [nn.Conv2d(256, 1 * num_classes, kernel_size=3, padding=1)]
+        # fc7
+        loc_layers += [nn.Conv2d(256, 1 * 4, kernel_size=3, padding=1)]
+        conf_layers += [nn.Conv2d(256, 1 * num_classes, kernel_size=3, padding=1)]
+        # conv7_2
+        loc_layers += [nn.Conv2d(64, 1 * 4, kernel_size=3, padding=1)]
+        conf_layers += [nn.Conv2d(64, 1 * num_classes, kernel_size=3, padding=1)]
+        return nn.Sequential(*loc_layers), nn.Sequential(*conf_layers)
+
+    def load_weights(self, base_file):
+        other, ext = os.path.splitext(base_file)
+        if ext == '.pkl' or '.pth':
+            print('Loading weights into state dict...')
+            self.load_state_dict(torch.load(base_file,
+                                            map_location=lambda storage, loc: storage))
+            print('Finished!')
+        else:
+            print('Sorry only .pth and .pkl files supported.')
+
+    def forward(self, x: torch.Tensor):
+        confidences = []
+        locations = []
+        start_layer_index = 0
+        header_index = 0
+        for end_layer_index in self.source_layer_indexes:
+            if isinstance(end_layer_index, GraphPath):
+                path = end_layer_index
+                end_layer_index = end_layer_index.s0
+                added_layer = None
+            elif isinstance(end_layer_index, tuple):
+                added_layer = end_layer_index[1]
+                end_layer_index = end_layer_index[0]
+                path = None
+            else:
+                added_layer = None
+                path = None
+            for layer in self.base_net[start_layer_index: end_layer_index]:
+                x = layer(x)
+            if added_layer:
+                y = added_layer(x)
+            else:
+                y = x
+            if path:
+                sub = getattr(self.base_net[end_layer_index], path.name)
+                for layer in sub[:path.s1]:
+                    x = layer(x)
+                y = x
+                for layer in sub[path.s1:]:
+                    x = layer(x)
+                end_layer_index += 1
+            start_layer_index = end_layer_index
+            confidence, location = self.compute_header(header_index, y)
+            header_index += 1
+            confidences.append(confidence)
+            locations.append(location)
+
+        for layer in self.base_net[end_layer_index:]:
+            x = layer(x)
+
+        for layer in self.extras:
+            x = layer(x)
+            confidence, location = self.compute_header(header_index, x)
+            header_index += 1
+            confidences.append(confidence)
+            locations.append(location)
+
+        confidences = torch.cat(confidences, 1)
+        locations = torch.cat(locations, 1)
+
+        self.detection_dimension = torch.Tensor(self.detection_dimension)
+
+        if self.phase == "test":
+            output = (locations,
+                      self.softmax(confidences),
+                      self.detection_dimension)
+        else:
+            output = (locations,
+                      confidences,
+                      self.detection_dimension)
+
+        return output
+
+    def compute_header(self, i, x):
+
+        # add detection feature map
+        # print(x.shape[2:])
+        self.detection_dimension.append(x.shape[2:])
+        # add extra normalization
+        if i == 0:
+            x =  self.conv3_3_L2Norm(x)
+        elif i == 1:
+            x = self.conv4_3_L2Norm(x)
+        elif i == 2:
+            x = self.conv5_3_L2Norm(x)
+
+        # maxout
+        if i == 0:
+            conf_t = self.conf[i](x)
+            max_conf, _ = conf_t[:, 0:3, :, :].max(1, keepdim=True)
+            lab_conf = conf_t[:, 3:, :, :]
+            confidence = torch.cat((max_conf, lab_conf), dim=1)
+        else:
+            confidence = self.conf[i](x)
+
+        confidence = confidence.permute(0, 2, 3, 1).contiguous()
+        confidence = confidence.view(confidence.size(0), -1, self.num_classes)
+
+        location = self.loc[i](x)
+        location = location.permute(0, 2, 3, 1).contiguous()
+        location = location.view(location.size(0), -1, 4)
+
+        return confidence, location
+
+if __name__ == '__main__':
+    net = S3FD_MV2('train', 640, 2)
+    image = np.zeros((1,3,640,640), dtype=np.float32)
+    output = net.forward(torch.from_numpy(image))
+    print(output)
