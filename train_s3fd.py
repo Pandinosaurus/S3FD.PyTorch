@@ -79,13 +79,17 @@ if args.resume_net is not None:
         new_state_dict[name] = v
     net.load_state_dict(new_state_dict)
 elif os.path.isfile(args.pretrained):
-    vgg_weights = torch.load(args.pretrained)
+    # vgg_weights = torch.load(args.pretrained)
+    vgg_weights = torch.load(args.pretrained, map_location=lambda storage, loc: storage)
     if args.net == 'vgg16':
         print('Loading VGG network...')
         net.vgg.load_state_dict(vgg_weights)
     elif args.net == 'mv2':
         print('Loading MobileNet V2 network...')
-        net.base_net.load_state_dict(vgg_weights)
+        model_dict = net.base_net.state_dict()
+        for k in vgg_weights['net'].keys():
+            model_dict[k.replace('module.features.', '')] = vgg_weights['net'][k]
+        net.base_net.load_state_dict(model_dict, strict=False)
 
 if args.ngpu > 1:
     net = torch.nn.DataParallel(net, device_ids=list(range(args.ngpu)))

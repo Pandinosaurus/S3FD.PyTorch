@@ -86,6 +86,7 @@ class VOCDetection(data.Dataset):
     def __getitem__(self, index):
         img_id = self.ids[index]
         target = ET.parse(self._annopath % img_id[1]).getroot()
+        # print(self._imgpath % img_id[0])
         img = cv2.imread(self._imgpath % img_id[0], cv2.IMREAD_COLOR)
         height, width, _ = img.shape
 

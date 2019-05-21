@@ -51,5 +51,5 @@ class TensorboardSummary(object):
 
     def create_summary(self):
         if self.writer is None:
-            self.writer = SummaryWriter(log_dir=os.path.join(self.directory))
+            self.writer = SummaryWriter(logdir=os.path.join(self.directory))
         return self.writer
