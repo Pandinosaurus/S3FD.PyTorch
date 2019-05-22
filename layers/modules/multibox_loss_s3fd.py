@@ -112,7 +112,7 @@ class MultiBoxLoss(nn.Module):
         # Paper Normalized Ncls and Nreg
         N = max(num_pos.data.sum().float() + num_neg.data.sum().float(), 1)
         M = max(num_pos.data.sum().float(), 1)
-        print(N, M)
+        # print(N, M)
         loss_l /= M
         loss_c /= N
 
