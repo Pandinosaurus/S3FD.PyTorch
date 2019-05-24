@@ -82,7 +82,7 @@ def detect_face(net, img, resize):
     boxes = decode(loc.data.squeeze(0), prior_data, cfg['variance'])
     boxes = boxes * scale / resize
     boxes = boxes.cpu().numpy()
-    scores = conf.data.cpu().numpy()[:, 1]
+    scores = conf.data.squeeze(0).cpu().numpy()[:, 1]
 
     # ignore low scores
     inds = np.where(scores > args.confidence_threshold)[0]
