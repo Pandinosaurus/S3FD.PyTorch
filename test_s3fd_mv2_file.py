@@ -207,30 +207,28 @@ if __name__ == '__main__':
     else:
         net = net.cpu()
 
-    # Path = './demo'
-    # filelist = ['dream1992', 'test', 'test1', 'test2', 'test3', 'test4', 'test5']
-    Path = './demo1'
-    filelist = ['fddb_01', 'fddb_02', 'fddb_03', 'fddb_04', 'fddb_05', 'fddb_06', 'fddb_07',
-                'fddb_08', 'fddb_09', 'fddb_10', 'fddb_11', 'sigma', ]
+    Path = './demo'
+    filelist = ['office', 'festival', 'oscar']
+
     for num, file in enumerate(filelist):
         im_name = file
         Image_Path = Path + '/' + im_name[:] + '.jpg'
         print(Image_Path)
-        image = np.float32(cv2.imread(Image_Path, cv2.IMREAD_COLOR))
-        image_int8 = np.uint8(image)
+        image = cv2.imread(Image_Path, cv2.IMREAD_COLOR)
 
-        h,w,c = np.shape(image_int8)
+        h,w,c = np.shape(image)
         #print(resize)
         minside = h if h < w else w
-        resize = 360.0 / minside
+        resize = 1080.0 / minside
         print(resize)
 
-        dets = detect_face(net, image, resize)  # origin test
+        dets = detect_face(net, np.float32(image), resize)  # origin test
         print(dets)
 
         for i in range(len(dets)):
             x1, y1, x2, y2, s = dets[i]
             if s >= 0.9:
-                cv2.rectangle(image_int8, (int(x1), int(y1)), (int(x2), int(y2)), (0, 0, 255), 2)
-        cv2.imshow("disp", image_int8)
+                cv2.rectangle(image, (int(x1), int(y1)), (int(x2), int(y2)), (0, 0, 255), 2)
+        cv2.imshow("disp", image)
         cv2.waitKey(0)
+        # cv2.imwrite(im_name + "_out.jpg", image)
