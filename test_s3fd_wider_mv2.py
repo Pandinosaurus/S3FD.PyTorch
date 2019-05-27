@@ -97,7 +97,7 @@ def detect_face(net, img, resize):
 
     # do NMS
     dets = np.hstack((boxes, scores[:, np.newaxis])).astype(np.float32, copy=False)
-    keep = nms(dets, args.nms_threshold, force_cpu=args.cpu)
+    keep = nms(dets, args.nms_threshold)
     dets = dets[keep, :]
     #print(dets)
 
