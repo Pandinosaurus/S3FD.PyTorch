@@ -14,7 +14,7 @@ from layers.modules.multibox_loss_s3fd import MultiBoxLoss
 from layers.functions.prior_box_s3fd import PriorBox
 import time
 import math
-from models.s3fd import S3FD, S3FD_MV2
+from models.s3fd import S3FD, S3FD_MV2, S3FD_FairNAS_A, S3FD_FairNAS_B
 from utils.logging import Logger
 from utils.logging import TensorboardSummary
 
@@ -56,6 +56,10 @@ if args.net == 'vgg16':
     net = S3FD('train', img_dim, num_classes)
 elif args.net == 'mv2':
     net = S3FD_MV2('train', img_dim, num_classes)
+elif args.net == 'FairNAS_A':
+    net = S3FD_FairNAS_A('train', img_dim, num_classes)
+elif args.net == 'FairNAS_B':
+    net = S3FD_FairNAS_B('train', img_dim, num_classes)
 print("Printing net...")
 print(net)
 
@@ -89,6 +93,54 @@ elif os.path.isfile(args.pretrained):
         model_dict = net.base_net.state_dict()
         for k in vgg_weights['net'].keys():
             model_dict[k.replace('module.features.', '')] = vgg_weights['net'][k]
+        net.base_net.load_state_dict(model_dict, strict=False)
+    elif args.net == 'FairNAS_A':
+        print('Loading FairNAS_A network...')
+        model_dict = net.base_net.state_dict()
+        f_key = open("./weights/fairnas_a_model_key.txt", 'r')
+        if f_key is None:
+            exit()
+        else:
+            model_keys = f_key.readlines()
+        f_key.close()
+
+        f_key = open("./weights/fairnas_a_ckpt_key.txt", 'r')
+        if f_key is None:
+            exit()
+        else:
+            ckpt_keys = f_key.readlines()
+        f_key.close()
+
+        for idx, key in enumerate(model_keys):
+            # print(key.strip('\n'), ckpt_keys[idx].strip('\n'))
+            model_dict[key.strip('\n')] = vgg_weights['model_state'][ckpt_keys[idx].strip('\n')]
+        net.base_net.load_state_dict(model_dict, strict=False)
+    elif args.net == 'FairNAS_B':
+        print('Loading FairNAS_B network...')
+        model_dict = net.base_net.state_dict()
+        f_key = open("./weights/fairnas_b_model_key.txt", 'r')
+        if f_key is None:
+            exit()
+        else:
+            model_keys = f_key.readlines()
+        f_key.close()
+
+        f_key = open("./weights/fairnas_b_ckpt_key.txt", 'r')
+        if f_key is None:
+            exit()
+        else:
+            ckpt_keys = f_key.readlines()
+        f_key.close()
+
+        for idx, key in enumerate(model_keys):
+            # print(key.strip('\n'), ckpt_keys[idx].strip('\n'))
+            model_dict[key.strip('\n')] = vgg_weights['model_state'][ckpt_keys[idx].strip('\n')]
+        # for k in model_dict.keys():
+        #   print(k)
+        # for k in checkpoint['model_state'].keys():
+        #   print(k)
+        # for k in checkpoint['net'].keys():
+        #     model_dict[k.replace('module.features.', '')] = checkpoint['net'][k]
         net.base_net.load_state_dict(model_dict, strict=False)
 
 if args.ngpu > 1:
@@ -131,7 +183,7 @@ def train():
             # create batch iterator
             batch_iterator = iter(data.DataLoader(dataset, batch_size, shuffle=True, num_workers=args.num_workers, collate_fn=detection_collate, pin_memory=True))
             if (epoch % 10 == 0 and epoch > 0) or (epoch % 5 == 0 and epoch > 200):
-                torch.save(net.state_dict(), args.save_folder + 'S3FD_epoch_' + repr(epoch) + '.pth')
+                torch.save(net.state_dict(), args.save_folder + 'S3FD_{}_epoch_' + repr(epoch) + '.pth'.format(args.net))
             epoch += 1
 
         load_t0 = time.time()
@@ -166,7 +218,7 @@ def train():
             writer.add_scalar('train/loss_c', cfg['conf_weight'] * loss_c.item(), iteration)
             writer.add_scalar('train/lr', lr, iteration)
 
-    torch.save(net.state_dict(), args.save_folder + 'Final_S3FD.pth')
+    torch.save(net.state_dict(), args.save_folder + 'Final_{}_S3FD.pth'.format(args.net))
 
 
 def adjust_learning_rate(optimizer, gamma, epoch, step_index, iteration, epoch_size):
