@@ -197,7 +197,7 @@ class S3FD_MV2(nn.Module):
             GraphPath(14, 'conv', 3),
             19,
         ]
-        print(self.base_net)
+        # print(self.base_net)
 
         self.extras = nn.ModuleList([
             InvertedResidual(1280, 512, stride=2, expand_ratio=0.2),
@@ -368,7 +368,7 @@ class S3FD_FairNAS_A(nn.Module):
             GraphPath(16, 'conv', 3),
             22,
         ]
-        print(self.base_net)
+        # print(self.base_net)
 
         self.extras = nn.ModuleList([
             InvertedResidual(1280, 512, stride=2, expand_ratio=0.2),
@@ -539,7 +539,7 @@ class S3FD_FairNAS_B(nn.Module):
             GraphPath(16, 'conv', 3),
             22,
         ]
-        print(self.base_net)
+        # print(self.base_net)
 
         self.extras = nn.ModuleList([
             InvertedResidual(1280, 512, stride=2, expand_ratio=0.2),
