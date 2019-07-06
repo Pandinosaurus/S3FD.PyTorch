@@ -183,7 +183,7 @@ def train():
             # create batch iterator
             batch_iterator = iter(data.DataLoader(dataset, batch_size, shuffle=True, num_workers=args.num_workers, collate_fn=detection_collate, pin_memory=True))
             if (epoch % 10 == 0 and epoch > 0) or (epoch % 5 == 0 and epoch > 200):
-                torch.save(net.state_dict(), args.save_folder + 'S3FD_{}_epoch_' + repr(epoch) + '.pth'.format(args.net))
+                torch.save(net.state_dict(), args.save_folder + 'S3FD_{}_epoch_'.format(args.net) + repr(epoch) + '.pth')
             epoch += 1
 
         load_t0 = time.time()

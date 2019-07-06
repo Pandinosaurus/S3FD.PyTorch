@@ -8,7 +8,7 @@ from data.config_s3fd_mv2 import cfg
 from layers.functions.prior_box_s3fd import PriorBox
 from utils.nms_wrapper import nms
 import cv2
-from models.s3fd import S3FD_MV2
+from models.s3fd import S3FD_MV2, S3FD_FairNAS_A, S3FD_FairNAS_B
 from utils.box_utils import decode
 from utils.timer import Timer
 import scipy.io as sio
@@ -17,6 +17,7 @@ parser = argparse.ArgumentParser(description='S3FD')
 
 parser.add_argument('-m', '--trained_model', default='weights/FaceBoxes.pth',
                     type=str, help='Trained state_dict file path to open')
+parser.add_argument('--net', default='mv2', help='backone network')
 parser.add_argument('--save_folder', default='eval/WIDER_FACE/', type=str, help='Dir to save results')
 parser.add_argument('--cuda', default=True, type=bool, help='Use cuda to train model')
 parser.add_argument('--cpu', default=False, type=bool, help='Use cpu nms')
@@ -195,7 +196,12 @@ def write_to_txt(f, det):
 
 if __name__ == '__main__':
     # net and model
-    net = S3FD_MV2(phase='test', size=None, num_classes=2)    # initialize detector
+    if args.net == "mv2":
+        net = S3FD_MV2(phase='test', size=None, num_classes=2)    # initialize detector
+    elif args.net == "FairNAS_A":
+        net = S3FD_FairNAS_A(phase='test', size=None, num_classes=2)
+    elif args.net == "FairNAS_B":
+        net = S3FD_FairNAS_B(phase='test', size=None, num_classes=2)
     net = load_model(net, args.trained_model)
     net.eval()
     print('Finished loading model!')
@@ -218,8 +224,8 @@ if __name__ == '__main__':
     Path = './data/WIDER_FACE/WIDER/WIDER_val/images/'
     for index, event in enumerate(event_list):
         filelist = file_list[index][0]
-        if not os.path.exists(args.save_folder + event[0][0]):
-            os.makedirs(args.save_folder + event[0][0])
+        if not os.path.exists(os.path.join(args.save_folder, event[0][0])):
+            os.makedirs(os.path.join(args.save_folder, event[0][0]))
 
         for num, file in enumerate(filelist):
             im_name = file[0][0]
@@ -240,7 +246,7 @@ if __name__ == '__main__':
             det = np.row_stack((det0, det1, det2, det3))
             dets = bbox_vote(det)
 
-            f = open(args.save_folder + event[0][0] + '/' + im_name + '.txt', 'w')
+            f = open(os.path.join(args.save_folder, event[0][0]) + '/' + im_name + '.txt', 'w')
             write_to_txt(f, dets)
             f.close()
             print('event:%d num:%d' % (index + 1, num + 1))
