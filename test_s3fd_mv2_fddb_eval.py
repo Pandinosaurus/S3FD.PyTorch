@@ -19,10 +19,8 @@ def parse_args(argv):
     parser = argparse.ArgumentParser(description='S3FD')
     parser.add_argument('-m', '--trained_model', default='weights/FaceBoxes.pth',
                         type=str, help='Trained state_dict file path to open')
-    parser.add_argument('--save_folder', default='eval/WIDER_FACE/', type=str, help='Dir to save results')
     parser.add_argument('--cuda', default=False, type=bool, help='Use cuda to train model')
     parser.add_argument('--cpu', default=False, type=bool, help='Use cpu nms')
-    parser.add_argument('--dataset', default='FDDB', type=str, choices=['WIDER'], help='dataset')
     parser.add_argument('--confidence_threshold', default=0.1, type=float, help='confidence_threshold')
     parser.add_argument('--top_k', default=5000, type=int, help='top_k')
     parser.add_argument('--nms_threshold', default=0.3, type=float, help='nms_threshold')
@@ -213,7 +211,9 @@ if __name__ == '__main__':
         print("file_list: {} does not exist".format(file_list))
         exit()
 
-    output_dir = os.path.basename(image_dir) + "_out"
+    outputname = os.path.basename(image_dir[:-1]) if image_dir[-1] == '/' else os.path.basename(image_dir)
+    print(outputname)
+    output_dir = outputname + "_" + os.path.basename(args.trained_model).split(".")[0].lower() + "_output"
     if not os.path.exists(output_dir):
         os.mkdir(output_dir)
 
@@ -233,7 +233,8 @@ if __name__ == '__main__':
         h,w,c = np.shape(img_float)
         minside = h if h < w else w
 
-        resize = 300.0 / minside
+        # resize = 300.0 / minside
+        resize = 1.0
 
         dets = detect_face(net, img_float, resize)  # origin test
 
