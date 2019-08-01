@@ -376,9 +376,9 @@ class S3FD_FairNAS_A(nn.Module):
             InvertedResidual(256, 256, stride=2, expand_ratio=0.5)
         ])
 
-        self.expand = InvertedResidual(120, 192, stride=1, expand_ratio=1)
+        # self.expand = InvertedResidual(120, 192, stride=1, expand_ratio=1)
 
-        self.conv3_3_L2Norm = L2Norm(192, 10)
+        self.conv3_3_L2Norm = L2Norm(120, 10)
         self.conv4_3_L2Norm = L2Norm(576, 8)
         self.conv5_3_L2Norm = L2Norm(1280, 5)
 
@@ -403,8 +403,8 @@ class S3FD_FairNAS_A(nn.Module):
         loc_layers = []
         conf_layers = []
         # Max-out BG label
-        loc_layers += [nn.Conv2d(192, 1 * 4, kernel_size=3, padding=1)]
-        conf_layers += [nn.Conv2d(192, 1 * 4, kernel_size=3, padding=1)]
+        loc_layers += [nn.Conv2d(120, 1 * 4, kernel_size=3, padding=1)]
+        conf_layers += [nn.Conv2d(120, 1 * 4, kernel_size=3, padding=1)]
         # conf_layers += [nn.Conv2d(256, 1 * num_classes, kernel_size=3, padding=1)]
         # conv4_3
         loc_layers += [nn.Conv2d(576, 1 * 4, kernel_size=3, padding=1)]
@@ -504,7 +504,7 @@ class S3FD_FairNAS_A(nn.Module):
     def compute_header(self, i, x):
         # add extra normalization
         if i == 0:
-            x = self.expand(x)
+            # x = self.expand(x)
             x =  self.conv3_3_L2Norm(x)
         elif i == 1:
             x = self.conv4_3_L2Norm(x)
@@ -550,9 +550,9 @@ class S3FD_FairNAS_B(nn.Module):
             InvertedResidual(256, 256, stride=2, expand_ratio=0.5)
         ])
 
-        self.expand = InvertedResidual(120, 192, stride=1, expand_ratio=1)
+        # self.expand = InvertedResidual(120, 192, stride=1, expand_ratio=1)
 
-        self.conv3_3_L2Norm = L2Norm(192, 10)
+        self.conv3_3_L2Norm = L2Norm(120, 10)
         self.conv4_3_L2Norm = L2Norm(576, 8)
         self.conv5_3_L2Norm = L2Norm(1280, 5)
 
@@ -577,8 +577,8 @@ class S3FD_FairNAS_B(nn.Module):
         loc_layers = []
         conf_layers = []
         # Max-out BG label
-        loc_layers += [nn.Conv2d(192, 1 * 4, kernel_size=3, padding=1)]
-        conf_layers += [nn.Conv2d(192, 1 * 4, kernel_size=3, padding=1)]
+        loc_layers += [nn.Conv2d(120, 1 * 4, kernel_size=3, padding=1)]
+        conf_layers += [nn.Conv2d(120, 1 * 4, kernel_size=3, padding=1)]
         # conf_layers += [nn.Conv2d(256, 1 * num_classes, kernel_size=3, padding=1)]
         # conv4_3
         loc_layers += [nn.Conv2d(576, 1 * 4, kernel_size=3, padding=1)]
@@ -678,7 +678,7 @@ class S3FD_FairNAS_B(nn.Module):
     def compute_header(self, i, x):
         # add extra normalization
         if i == 0:
-            x = self.expand(x)
+            # x = self.expand(x)
             x =  self.conv3_3_L2Norm(x)
         elif i == 1:
             x = self.conv4_3_L2Norm(x)

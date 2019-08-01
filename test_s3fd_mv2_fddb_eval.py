@@ -9,7 +9,7 @@ from data.config_s3fd_mv2 import cfg
 from layers.functions.prior_box_s3fd import PriorBox
 from utils.nms_wrapper import nms
 import cv2
-from models.s3fd import S3FD_MV2
+from models.s3fd import S3FD_MV2, S3FD_FairNAS_A, S3FD_FairNAS_B
 from utils.box_utils import decode
 from utils.timer import Timer
 import scipy.io as sio
@@ -19,6 +19,7 @@ def parse_args(argv):
     parser = argparse.ArgumentParser(description='S3FD')
     parser.add_argument('-m', '--trained_model', default='weights/FaceBoxes.pth',
                         type=str, help='Trained state_dict file path to open')
+    parser.add_argument('--net', default='mv2', help='backone network')
     parser.add_argument('--cuda', default=False, type=bool, help='Use cuda to train model')
     parser.add_argument('--cpu', default=False, type=bool, help='Use cpu nms')
     parser.add_argument('--confidence_threshold', default=0.1, type=float, help='confidence_threshold')
@@ -188,7 +189,12 @@ def bbox_vote(det):
 if __name__ == '__main__':
     args = parse_args(sys.argv[1:])
     # net and model
-    net = S3FD_MV2(phase='test', size=None, num_classes=2)    # initialize detector
+    if args.net == "mv2":
+        net = S3FD_MV2(phase='test', size=None, num_classes=2)    # initialize detector
+    elif args.net == "FairNAS_A":
+        net = S3FD_FairNAS_A(phase='test', size=None, num_classes=2)
+    elif args.net == "FairNAS_B":
+        net = S3FD_FairNAS_B(phase='test', size=None, num_classes=2)
     net = load_model(net, args.trained_model)
     net.eval()
     print('Finished loading model!')
