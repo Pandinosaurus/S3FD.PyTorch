@@ -15,6 +15,7 @@ from layers.functions.prior_box_s3fd import PriorBox
 import time
 import math
 from models.s3fd import S3FD, S3FD_MV2, S3FD_FairNAS_A, S3FD_FairNAS_B
+from models.s3fd_resnet import S3FD_RESNET18
 from utils.logging import Logger
 from utils.logging import TensorboardSummary
 
@@ -60,6 +61,8 @@ elif args.net == 'FairNAS_A':
     net = S3FD_FairNAS_A('train', img_dim, num_classes)
 elif args.net == 'FairNAS_B':
     net = S3FD_FairNAS_B('train', img_dim, num_classes)
+elif args.net == 'resnet18':
+    net = S3FD_RESNET18('train', img_dim, num_classes)
 print("Printing net...")
 print(net)
 
@@ -88,6 +91,8 @@ elif os.path.isfile(args.pretrained):
     if args.net == 'vgg16':
         print('Loading VGG network...')
         net.vgg.load_state_dict(vgg_weights)
+    elif args.net == 'resnet18':
+        net.base.load_state_dict(vgg_weights)
     elif args.net == 'mv2':
         print('Loading MobileNet V2 network...')
         model_dict = net.base_net.state_dict()
