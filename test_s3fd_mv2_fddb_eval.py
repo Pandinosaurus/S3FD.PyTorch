@@ -10,6 +10,7 @@ from layers.functions.prior_box_s3fd import PriorBox
 from utils.nms_wrapper import nms
 import cv2
 from models.s3fd import S3FD_MV2, S3FD_FairNAS_A, S3FD_FairNAS_B
+from models.s3fd_resnet import S3FD_RESNET18
 from utils.box_utils import decode
 from utils.timer import Timer
 import scipy.io as sio
@@ -195,6 +196,8 @@ if __name__ == '__main__':
         net = S3FD_FairNAS_A(phase='test', size=None, num_classes=2)
     elif args.net == "FairNAS_B":
         net = S3FD_FairNAS_B(phase='test', size=None, num_classes=2)
+    elif args.net == 'resnet18':
+        net = S3FD_RESNET18(phase='test', size=None, num_classes=2)
     net = load_model(net, args.trained_model)
     net.eval()
     print('Finished loading model!')
