@@ -47,7 +47,8 @@ summary = TensorboardSummary(args.save_folder)
 writer = summary.create_summary()
 
 img_dim = 640
-rgb_means = (104, 117, 123)
+# rgb_means = (104, 117, 123)
+rgb_means = (123, 117, 104)
 num_classes = 2
 batch_size = args.batch_size
 weight_decay = args.weight_decay

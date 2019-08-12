@@ -71,7 +71,8 @@ def detect_face(net, img, resize):
         img = cv2.resize(img, None, None, fx=resize, fy=resize, interpolation=cv2.INTER_LINEAR)
     im_height, im_width, _ = img.shape
     scale = torch.Tensor([img.shape[1], img.shape[0], img.shape[1], img.shape[0]])
-    img -= (104, 117, 123)
+    # img -= (104, 117, 123)
+    img -= (123, 117, 104)
     img = img.transpose(2, 0, 1)
     img = torch.from_numpy(img).unsqueeze(0)
     if args.cuda:
@@ -237,6 +238,7 @@ if __name__ == '__main__':
         full_path = os.path.join(image_dir, img_path.strip("\n") + ".jpg")
         print(full_path)
         img = cv2.imread(full_path)
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         img_float = np.float32(img)
 
         h,w,c = np.shape(img_float)

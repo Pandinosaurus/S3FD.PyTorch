@@ -66,7 +66,8 @@ def detect_face(net, img, resize):
         img = cv2.resize(img, None, None, fx=resize, fy=resize, interpolation=cv2.INTER_LINEAR)
     im_height, im_width, _ = img.shape
     scale = torch.Tensor([img.shape[1], img.shape[0], img.shape[1], img.shape[0]])
-    img -= (104, 117, 123)
+    # img -= (104, 117, 123)
+    img -= (123, 117, 104)
     img = img.transpose(2, 0, 1)
     img = torch.from_numpy(img).unsqueeze(0)
     if args.cuda:
@@ -223,6 +224,7 @@ if __name__ == '__main__':
 
     while success:
         success, im = videoCapture.read()
+        im = cv2.cvtColor(im, cv2.COLOR_BGR2RGB)
         im_float = np.float32(im)
         print(np.shape(im_float))
         # Detect all object classes and regress object bounds
