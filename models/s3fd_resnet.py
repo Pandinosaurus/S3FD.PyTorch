@@ -16,7 +16,7 @@ class S3FD_RESNET18(nn.Module):
 
     def __init__(self, phase, size, num_classes):
         super().__init__()
-        self.fo = 64
+        self.fo = 256
         self.fi = 512
         self.arch = 'resnet18'
         self.phase = phase
@@ -27,9 +27,9 @@ class S3FD_RESNET18(nn.Module):
             self.base.layer2,
             self.base.layer3,
             self.base.layer4,
-            self.base._make_layer(BasicBlock, self.fi, self.fo, stride=2),
-            self.base._make_layer(BasicBlock, self.fo, self.fo, stride=2),
-            self.base._make_layer(BasicBlock, self.fo, self.fo, stride=2)
+            self.base._make_layer(BasicBlock, self.fo, blocks=1, stride=2),
+            self.base._make_layer(BasicBlock, self.fo, blocks=1, stride=2),
+            self.base._make_layer(BasicBlock, 64, blocks=1, stride=2)
         ])
 
         self.conv2_2_L2Norm = L2Norm(128, 10)
@@ -57,7 +57,7 @@ class S3FD_RESNET18(nn.Module):
     def multibox(self, num_classes):
         loc_layers = []
         conf_layers = []
-        f_in = [128, 256, 512, self.fi, self.fo, self.fo]
+        f_in = [128, 256, 512, self.fo, self.fo, 64]
 
         # Max-out BG label
         loc_layers += [nn.Conv2d(f_in[0], 1 * 4, kernel_size=3, padding=1)]
@@ -147,6 +147,7 @@ class S3FD_RESNET18(nn.Module):
 if __name__ == '__main__':
     import numpy as np
     net = S3FD_RESNET18('train', 640, 2)
+    print(net)
     image = np.zeros((1,3,640,640), dtype=np.float32)
     output = net.forward(torch.from_numpy(image))
     print(output)
